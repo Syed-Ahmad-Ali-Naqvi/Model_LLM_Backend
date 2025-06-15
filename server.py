@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import httpx
@@ -88,6 +89,9 @@ KB ="""
 #         if phrase.lower() in text.lower():
 #             return "[User attempted to override system instructions—request denied.]"
 #     return text
+@app.get("/", response_model=GenerateResponse)
+async def root_get():
+    return await generate(GenerateRequest(prompt="Hello from GET /"))
 
 @app.post("/generate", response_model=GenerateResponse)
 async def generate(req: GenerateRequest):

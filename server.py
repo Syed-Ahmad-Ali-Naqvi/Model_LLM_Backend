@@ -4,6 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import httpx
 import torch
+import os
+
 
 app = FastAPI(title="Ollama Proxy Server")
 
@@ -15,7 +17,13 @@ app.add_middleware(
 )
 
 # Ollama REST API endpoint
-OLLAMA_API = "http://localhost:11434/v1/chat/completions"
+# OLLAMA_API = "http://localhost:11434//v1/chat/completions"
+
+OLLAMA_API = os.getenv(
+    "OLLAMA_API_URL",
+    "http://localhost:11434/v1/chat/completions"
+)
+print("→ Using Ollama at", OLLAMA_API)
 
 # default model to proxy
 MODEL_NAME = "llama3.1"
@@ -23,7 +31,6 @@ MODEL_NAME = "llama3.1"
 class GenerateRequest(BaseModel):
     prompt: str
     max_tokens: int = 150
-    model: str = MODEL_NAME
     temperature: float = 0.5 
 
 class GenerateResponse(BaseModel):
@@ -91,7 +98,7 @@ KB ="""
 #     return text
 @app.get("/", response_model=GenerateResponse)
 async def root_get():
-    return await generate(GenerateRequest(prompt="Hello from GET /"))
+    return await generate(GenerateRequest(prompt="Hello"))
 
 @app.post("/generate", response_model=GenerateResponse)
 async def generate(req: GenerateRequest):
@@ -134,19 +141,19 @@ async def generate(req: GenerateRequest):
         {"role": "assistant", "content": "Hello! Welcome to BRAIN—your AI-powered business automation assistant. How can I help you today?"},
         {"role": "user",    "content": user_text},
     ]
-    print(f"Requesting model: {req.model} with prompt: {req.prompt}")
+    print(f"Requesting model: {MODEL_NAME} with prompt: {req.prompt}")
     
     async with httpx.AsyncClient() as client:
         try:
             resp = await client.post(
                 OLLAMA_API,
                 json={
-                    "model": req.model,
+                    "model": MODEL_NAME,
                     "messages": messages,
                     "max_tokens": req.max_tokens,
                     "temperature": req.temperature,
                 },
-                timeout=60.0,
+                timeout=360.0,
             )
             resp.raise_for_status()
         except httpx.HTTPError as e:

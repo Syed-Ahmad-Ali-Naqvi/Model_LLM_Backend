@@ -8,12 +8,38 @@
 # database or a cache. For examples, see the Awesome Compose repository:
 # https://github.com/docker/awesome-compose
 services:
-  server:
-    build:
-      context: .
+  ollama:
+    image: ollama/ollama:latest
+    container_name: model_llm_backend-ollama-1
+    volumes:
+      - ollama_models:/root/.ollama
     ports:
-      - 8000:8000
+      - "11434:11434"
+    environment:
+      - OLLAMA_HOST=0.0.0.0:11434
+    entrypoint:
+      - ollama
+      - serve
+      # - sh
+      # - -c
+      # - |
+      #   echo "Pulling llama3.1 if missing…"
+      #   ollama pull llama3.1
+      #   echo "Starting Ollama HTTP server…"
+      #   ollama serve
 
+  server:
+    build: .
+    container_name: model_llm_backend-server-1
+    ports:
+      - "8000:8000"
+    depends_on:
+      - ollama
+    environment:
+      - OLLAMA_API_URL=http://ollama:11434/v1/chat/completions
+
+volumes:
+  ollama_models:
 # The commented out section below is an example of how to define a PostgreSQL
 # database that your application can use. `depends_on` tells Docker Compose to
 # start the database before your application. The `db-data` volume persists the
